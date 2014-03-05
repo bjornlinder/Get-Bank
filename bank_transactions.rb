@@ -3,8 +3,12 @@ require 'csv'
 require 'pry'
 require 'Date'
 
+set :views, File.dirname(__FILE__) + '/views'
+set :public_folder, File.dirname(__FILE__) + '/public'
+
 get '/accounts/:account' do
-#   
+  Business_Checking = BankAccount.new(params[:account])
+  erb :account
 end
 
 def import_shit(file_name)
@@ -16,9 +20,10 @@ def import_shit(file_name)
 end
 
 class BankAccount
-  #attr :balance,
-  attr_reader :starting_balance, :ending_balance
+  attr_reader :starting_balance, :ending_balance, :summaries, :account_name
   def initialize(account_name)
+    @account_name = account_name
+    @summaries = []
     @balance = []
     @account_transactions = []
     @account_name = account_name
@@ -33,47 +38,30 @@ class BankAccount
       if transaction["Account"] == account_name
         transaction.delete("Account")
         @account_transactions << BankTransaction.new(transaction)
-        #print @account_transactions
       end
     end
   end
   
   def ending_balance
-    @starting_balance - 0 #tally of banking account values
+    difference = 0
+    @account_transactions.each do |transaction|
+        difference -= transaction.summary["Amount"].to_i 
+    end
+    @ending_balance = @starting_balance - difference 
   end
   def summary
-    transaction_summaries = []
-    binding.pry
-    transaction_summaries = @account_transactions.sort {|transaction1,transaction2| DateTime.strptime(transaction1.summary['Date'],format='%_m,%-d,%Y')<=>DateTime.strptime(transaction2.summary['Date'],format='%_m,%-d,%Y')}      
-      
-      # puts transaction_class.summary
-      # puts transaction_class.debit?
-      puts transaction_summaries
-      return transaction_summaries
-      #@account_transactions.each do |transaction|
-      #  transaction["Date"]
-         #in chronological order
+    @account_transactions.sort {|transaction1,transaction2| DateTime.strptime(transaction2.summary['Date'],format='%m/%d/%Y')<=>DateTime.strptime(transaction1.summary['Date'],format='%m/%d/%Y')}      
   end
 end
 
-class BankTransaction# < BankAccount
+class BankTransaction
   attr_reader :transaction, :summary
   
   def initialize(transaction)
     @summary = transaction
-    #@transaction.each do |keys, values|
-     # @summary = "#{keys} "
-      
-    #end
-    #date,amount,description
   end
 
   def debit? () @summary["Amount"].to_i > 0 end
   def credit? () @summary["Amount"].to_i < 0 end
   
 end
-
-Business_Checking = BankAccount.new("Business Checking")
-Business_Checking.summary
-puts Business_Checking.ending_balance
-Business_Checking.starting_balance
