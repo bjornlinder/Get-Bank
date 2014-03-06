@@ -11,12 +11,20 @@ get '/accounts/:account' do
   erb :account
 end
 
-def import_shit(file_name)
+def import_shit(file_name, account)
   file_data = []
   CSV.foreach(file_name, headers: true) do |row|
-    file_data << row.to_hash 
+    file_data << row.to_hash if row.to_hash["Account"] == account
   end
   file_data
+end
+
+def filter (array, &block)
+  array.each do |account|
+    if account["Account"] == account_name
+      yield(account)
+    end
+  end
 end
 
 class BankAccount
@@ -27,19 +35,18 @@ class BankAccount
     @balance = []
     @account_transactions = []
     @account_name = account_name
-    @balance = import_shit('balances.csv')
-    @balance.each do |account|
-      if account["Account"] == @account_name
-        @starting_balance = account["Balance"].to_f
-      end
+    accounts = import_shit('balances.csv', account_name)
+    transactions = import_shit('bank_data.csv', account_name)
+    
+    filter(accounts) do |account|
+      @starting_balance = account["Balance"].to_f #trouble?
     end
-    transactions = import_shit('bank_data.csv')
-    transactions.each do |transaction|       
-      if transaction["Account"] == account_name
-        transaction.delete("Account")
-        @account_transactions << BankTransaction.new(transaction)
-      end
+    
+    filter(transactions) do |transaction|
+      transaction.delete("Account")
+      @account_transactions << BankTransaction.new(transaction)
     end
+
   end
   
   def ending_balance
